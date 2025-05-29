@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Soccer Matches</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+            margin-top: 80px; 
+        }
+        header {
+            background-color: #000000;
+            color: #fff;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(252, 250, 250, 0.1);
+            z-index: 1000;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            margin-left: 20px;
+            font-size: 16px;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: #fff;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .match-teams {
+            font-weight: bold;
+            flex: 1;
+        }
+        .match-date {
+            color: #555;
+            flex: 1;
+        }
+        .match-actions {
+            flex: 1;
+            text-align: right;
+        }
+        button {
+            padding: 5px 10px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .favorite-btn {
+            background: none;
+            font-size: 20px;
+            color: #ccc;
+        }
+        .favorite-btn.favorited {
+            color: #ffd700;
+        }
+        #watchlist {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>SportsOrca Matches</h1>
+        <nav>
+            <a href="#" onclick="window.scrollTo(0, 0)">Home</a>
+            <a href="#watchlist" onclick="document.getElementById('watchlist').scrollIntoView()">Watchlist</a>
+            <a href="#" onclick="alert('SportsOrca Matches: A web app to track upcoming soccer matches.')">About</a>
+        </nav>
+    </header>
+    <h1 id="competition-title">Upcoming Matches</h1>
+    <ul id="matches-list"></ul>
+    <h2>My Watchlist</h2>
+    <ul id="watchlist"></ul>
+
+    <script>
+       
+        let watchlist = JSON.parse(localStorage.getItem('watchlist')) || [];
+        let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+        let cachedMatches = JSON.parse(localStorage.getItem('cachedMatches')) || [];
+
+        function renderMatches(matches) {
+            const matchesList = document.getElementById('matches-list');
+            matchesList.innerHTML = '';
+
+            if (matches.length === 0) {
+                matchesList.innerHTML = '<li>No upcoming matches available</li>';
+                return;
+            }
+
+            
+            document.getElementById('competition-title').textContent = `Upcoming ${matches[0].competition} Matches`;
+
+            matches.forEach(match => {
+                const li = document.createElement('li');
+                const isFavorited = favorites.includes(match.matchId);
+                const isInWatchlist = watchlist.some(m => m.matchId === match.matchId);
+                li.innerHTML = `
+                    <span class="match-teams">${match.homeTeam} vs ${match.awayTeam}</span>
+                    <span class="match-date">${new Date(match.date).toLocaleString()}</span>
+                    <span class="match-actions">
+                        <button onclick="notifyMe(${match.matchId}, '${match.homeTeam} vs ${match.awayTeam}')">Notify Me</button>
+                        <button class="watchlist-btn" data-match-id="${match.matchId}" onclick="toggleWatchlist(${match.matchId}, '${match.homeTeam}', '${match.awayTeam}', '${match.date}', this)">
+                            ${isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                        </button>
+                        <button class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-match-id="${match.matchId}" onclick="toggleFavorite(${match.matchId}, this)">
+                            ${isFavorited ? '★' : '☆'}
+                        </button>
+                    </span>
+                `;
+                matchesList.appendChild(li);
+            });
+        }
+
+        function notifyMe(matchId, matchName) {
+            alert(`Notification set for match ${matchName}! You'll be reminded before the game.`);
+        }
+
+        function toggleWatchlist(matchId, homeTeam, awayTeam, date, button) {
+            const match = { matchId, homeTeam, awayTeam, date };
+            const index = watchlist.findIndex(m => m.matchId === matchId);
+            const watchlistButton = document.querySelector(`.watchlist-btn[data-match-id='${matchId}']`);
+
+            if (index === -1) {
+                watchlist.push(match);
+                if (watchlistButton) watchlistButton.textContent = 'Remove from Watchlist';
+            } else {
+                watchlist.splice(index, 1);
+                if (watchlistButton) watchlistButton.textContent = 'Add to Watchlist';
+            }
+            localStorage.setItem('watchlist', JSON.stringify(watchlist));
+            updateWatchlist();
+        }
+
+        function toggleFavorite(matchId, button) {
+            if (favorites.includes(matchId)) {
+                favorites = favorites.filter(id => id !== matchId);
+                button.classList.remove('favorited');
+                button.textContent = '☆';
+            } else {
+                favorites.push(matchId);
+                button.classList.add('favorited');
+                button.textContent = '★';
+            }
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+        }
+
+        function updateWatchlist() {
+            const watchlistEl = document.getElementById('watchlist');
+            watchlistEl.innerHTML = '';
+            if (watchlist.length === 0) {
+                watchlistEl.innerHTML = '<li>No matches in watchlist</li>';
+                return;
+            }
+            watchlist.forEach(match => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="match-teams">${match.homeTeam} vs ${match.awayTeam}</span>
+                    <span class="match-date">${new Date(match.date).toLocaleString()}</span>
+                    <span class="match-actions">
+                        <button class="watchlist-btn" data-match-id="${match.matchId}" onclick="toggleWatchlist(${match.matchId}, '${match.homeTeam}', '${match.awayTeam}', '${match.date}', this)">Remove</button>
+                    </span>
+                `;
+                watchlistEl.appendChild(li);
+            });
+        }
+
+        async function fetchMatches() {
+            const cacheTime = localStorage.getItem('cacheTime');
+            const now = Date.now();
+            if (cachedMatches.length > 0 && cacheTime && (now - cacheTime) < 5 * 60 * 1000) {
+                renderMatches(cachedMatches);
+                updateWatchlist();
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/matches');
+                if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                const data = await response.json();
+                cachedMatches = data;
+                localStorage.setItem('cachedMatches', JSON.stringify(cachedMatches));
+                localStorage.setItem('cacheTime', now);
+                renderMatches(cachedMatches);
+                updateWatchlist();
+            } catch (error) {
+                console.error('Error fetching matches:', error);
+                const matchesList = document.getElementById('matches-list');
+                matchesList.innerHTML = `<li class="error">Error loading matches: ${error.message}. Try again in a minute.</li>`;
+                if (cachedMatches.length > 0) {
+                    renderMatches(cachedMatches);
+                    updateWatchlist();
+                }
+            }
+        }
+
+        fetchMatches();
+    </script>
+</body>
+</html>
